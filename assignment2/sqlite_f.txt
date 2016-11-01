@@ -1,0 +1,18 @@
+--big documents
+
+CREATE TEMP VIEW transactions AS
+SELECT f.docid
+FROM frequency f
+WHERE f.term = "transactions";
+
+CREATE TEMP VIEW world AS
+SELECT f.docid
+FROM frequency f
+WHERE f.term = "world";
+
+SELECT count(*) FROM (
+    SELECT t.docid
+    FROM transactions t
+    JOIN world w
+    ON t.docid = w.docid
+) x;

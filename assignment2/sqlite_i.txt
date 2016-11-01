@@ -1,0 +1,23 @@
+--keyword search
+
+--add 'washington taxes treasury' to the db
+
+CREATE VIEW adjusted AS
+SELECT * FROM frequency
+UNION
+SELECT 'q' as docid, 'washington' as term, 1 as count 
+UNION
+SELECT 'q' as docid, 'taxes' as term, 1 as count
+UNION 
+SELECT 'q' as docid, 'treasury' as term, 1 as count
+;
+
+SELECT f.docid, g.docid, SUM(f.count * g.count) total
+FROM adjusted f, adjusted g
+WHERE f.docid != g.docid 
+AND f.term = g.term
+AND g.docid = "q"
+GROUP BY f.docid, g.docid
+ORDER BY total ASC
+;
+

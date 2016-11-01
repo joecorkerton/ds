@@ -1,0 +1,8 @@
+--big documents
+
+SELECT count(*) FROM (
+    SELECT DISTINCT f.docid, COUNT(f.term)
+    FROM frequency f
+    GROUP BY f.docid
+    HAVING COUNT(f.term) > 300
+) x;

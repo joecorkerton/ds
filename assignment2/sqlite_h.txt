@@ -1,0 +1,12 @@
+--similarity matrix
+
+SELECT f.docid, g.docid, SUM(f.count * g.count) 
+FROM frequency f, frequency g
+WHERE f.docid != g.docid 
+AND f.term = g.term
+AND f.docid < g.docid
+AND f.docid = "10080_txt_crude"
+AND g.docid = "17035_txt_earn"
+GROUP BY f.docid, g.docid
+;
+

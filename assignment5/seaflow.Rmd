@@ -1,0 +1,165 @@
+---
+title: "Assignment 4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(rpart)
+library(randomForest)
+library(e1071)
+library(caret)
+seaflow_21min <- read.csv("~/ds/datasci_course_materials/assignment5/seaflow_21min.csv")
+```
+
+## Q1
+
+How many particles labeled "synecho" are in the file provided?
+
+```{r q1}
+length(which(seaflow_21min$pop == "synecho"))
+```
+
+## Q2
+
+What is the 3rd Quantile of the field fsc_small?
+
+```{r q2}
+summary(seaflow_21min)
+```
+
+## Q3
+
+Divide the data into two equal subsets, one for training and one for testing. Make sure to divide the data in an unbiased manner.
+
+What is the mean of the variable "time" for your training set?
+
+```{r q3}
+## 50% of the sample size
+smp_size <- floor(0.5 * nrow(seaflow_21min))
+
+## set the seed to make your partition reproductible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(seaflow_21min)), size = smp_size)
+
+train <- seaflow_21min[train_ind, ]
+test <- seaflow_21min[-train_ind, ]
+
+mean(train$time)
+```
+
+## Q4 
+
+In the plot of pe vs. chl_small, the particles labeled ultra should appear to be somewhat "mixed" with two other populations of particles. Which two populations?
+
+```{r q4}
+ggplot(data = train, aes(x = chl_small, y = pe)) +
+  geom_point(aes(colour = pop))
+```
+
+## Q5
+
+Train a tree as a function of the sensor measurements
+
+Use print(model) to inspect your tree. Which populations, if any, is your tree incapable of recognizing?
+
+```{r q5}
+fol <- formula(pop ~ fsc_small + fsc_perp + fsc_big + pe + chl_big + chl_small) #formula object
+model <- rpart(fol, method="class", data=train) #Train model
+print(model)
+```
+
+## Q6
+
+Most trees will include a node near the root that applies a rule to the pe field, where particles with a value less than some threshold will descend down one branch, and particles with a value greater than some threshold will descend down a different branch.
+
+If you look at the plot you created previously, you can verify that the threshold used in the tree is evident visually.
+
+What is the value of the threshold on the pe field learned in your model?
+
+## Q7
+
+Based on your decision tree, which variables appear to be most important in predicting the class population?
+
+## Q8
+
+How accurate was your decision tree on the test data?
+
+```{r q8}
+pred <- predict(model, newdata=test, type = "class")
+#confusionMatrix(pred, test$pop)
+sum(pred == test$pop)/nrow(test)
+```
+
+## Q9
+
+What was the accuracy of your random forest model on the test data?
+
+```{r q9}
+modelrf <- randomForest(fol, method = "class", data = train)
+predrf <- predict(modelrf, newdata = test)
+sum(predrf == test$pop)/nrow(test)
+```
+
+
+## Q10
+
+A random forest can obtain another estimate of variable importance based on the Gini impurity that we discussed in the lecture. The function importance(model) prints the mean decrease in gini importance for each variable. The higher the number, the more the gini impurity score decreases by branching on this variable, indicating that the variable is more important
+
+```{r q10}
+importance(modelrf)
+```
+
+## Q11
+
+Train a support vector machine model and compare results.
+
+Use the e1071 library and call model <- svm(fol, data=trainingdata)
+```{r q11}
+modele <- svm(fol, data=train)
+prede <- predict(modele, newdata = test)
+sum(prede == test$pop)/nrow(test)
+```
+
+## Q12
+
+Use the table function to generate a confusion matrix for each of your three methods.
+
+What appears to be the most common error the models make?
+
+```{r q12}
+#table(pred = , true = test$pop) #Doesn't work
+print(modelrf)
+```
+
+## Q13
+
+The variables in the dataset were assumed to be continuous, but one of them takes on only a few discrete values, suggesting a problem. Which variable exhibits this problem?
+
+fsc_big
+
+## Q14
+
+There is more subtle issue with data as well. Plot time vs. chl_big, and you will notice a band of the data looks out of place. This band corresponds to data from a particular file for which the sensor may have been miscalibrated. Remove this data from the dataset by filtering out all data associated with file_id 208, then repeat the experiment for all three methods, making sure to split the dataset into training and test sets after filtering out the bad data.
+
+```{r q14}
+ggplot(data = train, aes(x = chl_big, y = time)) +
+  geom_point(aes(colour = pop))
+#Remove data with file_id 208
+removed <- seaflow_21min[! (seaflow_21min$file_id == 208), ]
+#Repeat SVM modeling
+## 50% of the sample size
+smp_sizer <- floor(0.5 * nrow(removed))
+
+## set the seed to make your partition reproductible
+set.seed(123)
+train_indr <- sample(seq_len(nrow(removed)), size = smp_sizer)
+
+trainr <- removed[train_indr, ]
+testr <- removed[-train_indr, ]
+modelrepeat <- svm(fol, data=trainr)
+predrep <- predict(modelrepeat, newdata = testr)
+sum(predrep == testr$pop)/nrow(testr)
+```
+
