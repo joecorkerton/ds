@@ -1,0 +1,77 @@
+---
+title: "Titanic Competition"
+output: html_notebook
+---
+Load libaries
+
+```{r}
+library(ggplot2)
+library(randomForest)
+library(party)
+```
+
+Load Data
+```{r}
+train <- read.csv("train.csv", stringsAsFactors = FALSE)
+test <- read.csv("test.csv", stringsAsFactors = FALSE)
+```
+
+Extract Features
+```{r}
+extractFeatures <- function(data) {
+  features <- c("Pclass",
+                "Age",
+                "Sex",
+                "Parch",
+                "SibSp",
+                "Fare",
+                "Embarked")
+  fea <- data[,features]
+  fea$Age[is.na(fea$Age)] <- -1
+  fea$Fare[is.na(fea$Fare)] <- median(fea$Fare, na.rm=TRUE)
+  fea$Embarked[fea$Embarked==""] = "S"
+  fea$Sex      <- as.factor(fea$Sex)
+  fea$Embarked <- as.factor(fea$Embarked)
+  return(fea)
+}
+```
+Reduced number of feature extraction
+```{r}
+extractReducedFeatures <- function(data) {
+  features <- c("Pclass",
+                "Age",
+                "Sex",
+                "Parch",
+                "Fare")
+  fea <- data[,features]
+  fea$Age[is.na(fea$Age)] <- -1
+  fea$Fare[is.na(fea$Fare)] <- median(fea$Fare, na.rm=TRUE)
+  fea$Sex  <- as.factor(fea$Sex)
+  return(fea)
+}
+```
+
+Train Random Forest
+```{r}
+rf <- randomForest(extractReducedFeatures(train), as.factor(train$Survived), ntree=500)
+```
+
+Predict results for test data
+```{r}
+submission <- data.frame(PassengerId = test$PassengerId)
+submission$Survived <- predict(rf, extractReducedFeatures(test))
+write.csv(submission, file = "random_forest_reduced_submission.csv", row.names=FALSE)
+```
+
+Train conditional inference tree
+```{r}
+fit <- cforest(as.factor(train$Survived) ~ Pclass + Sex + Age + Parch + Fare, data=extractFeatures(train), controls=cforest_unbiased(ntree=2000, mtry=3))
+```
+
+Predict
+```{r}
+submission <- data.frame(PassengerId = test$PassengerId)
+submission$Survived <- predict(fit, extractFeatures(test), OOB=TRUE, type="response")
+write.csv(submission, file = "cond_inference_submission.csv", row.names=FALSE)
+```
+
